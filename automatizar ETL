@@ -1,0 +1,127 @@
+Automatizando execução do ETL no Pentaho
+image
+Job
+Como já foi falado no artigo anterior (Extraindo dados do e-mail com Pentaho – Spoon) o PDI do Pentaho facilita muito a vida de quem precisa executar engenharia de dados. Além das transformações, podemos contar também com os Jobs.
+
+Jobs são usados para disparar execuções de forma sequencial, diferente da Transformation que trabalha de forma paralela, executando os passos simultaneamente.
+
+Neste artigos usaremos o Job para iniciar uma transformação de forma automática dias/horários pré estabelecidos, além de enviar um e-mail avisando se a transformação foi executada com sucesso ou se ocorreu algum erro na transformação.
+
+Briefing
+Temos o seguinte caso: Conseguimos executar nossa transformação extraindo os dados da caixa postal. Agora precisamos deixar este processo autônomo, sendo executado em dias e horários pré determinados e com envio de aviso se sucesso ou falha.
+
+Figura 1 - Formulário de Solicitação
+Figura 1 – Formulário de Solicitação
+Executando
+1.º Criando o Job
+Abra o Job e salve com o nome que quiser:
+
+Figura 2 - Criando nova Transformação
+Figura 2 – Criando novo Job
+2º Adicionando o Start
+É através do Start que o Job deve começar sempre
+
+Figura 3 - Start
+Figura 3 – Start
+2.1º Configurando Start
+No Start você pode configurar quando o Job será executado. No nosso caso vamos configurar de outra forma, criando um .bat e um agendador com mais recursos.
+
+Figura 4 - Configuração do Start
+Figura 4 – Configuração do Start
+3º Executando transformação
+Adicionando o step Transformation onde iremos apontar para o Job qual transformação deve ser iniciada. Após adicionar a Transformation vamos ligar o Hop (Figura 5.1).
+
+Figura 5 - Transformation
+Figura 5 – Transformation
+Figura 5.1 - Hop entre Start e Transformation
+Figura 5.1 – Hop entre Start e Transformation
+3.1º Configurando o Transformation
+Vamos apontar a transformação onde você pode ver em SolicitacoesEmail.ktr que é a transformação que criamos no artigo anterior. Quando vamos apontar a transformação, o ideal é deixar o caminho relativo, conforme fiz nessa demonstração, clicando em CTRL+Espaço você consegue alterar isso. Então se o nome do diretório mudar o nosso ETL não vai parar de funcionar. Siga as outras configurações conforme imagem abaixo.
+
+Figura 6 - Configurando Transformation
+Figura 6 – Configurando Transformation
+Na aba Logging aponte o local para salvar os logs de execução dessa etapa, entre outras configurações relacionadas ao log. Você vai querer olhar as outras abas, mas pra esse trabalho não iremos alterar em nada mais.
+
+Figura 6.1 - Logging
+Figura 6.1 – Logging
+4º E-mail de sucesso
+Adicionando o step Mail e ligar o hop entre as etapas. Após executar executar a Transformation vamos configurar o Step Mail para enviar um e-mail informando que foi executado com sucesso anexando o log da execução zipado.
+
+Figura 7 - E-mail sucesso
+Figura 7 – E-mail sucesso
+4.1º Configurando step Mail
+4.1.1º Aba Addresses
+Olhando a imagem você já deve notar como deve configurar essa etapa.
+
+Figura 7.1 - Configurando e-mail de sucesso
+Figura 7.1 – Configurando e-mail de sucesso
+4.1.2º Aba Server
+Veja sua configuração SMTP e configure.
+
+Figura 7.2 - Aba Server
+Figura 7.2 – Aba Server
+4.1.3º Aba EMail Message
+Além das configurações, você poderá incluir um assunto e mensagem para o e-mail.
+
+Figura 7.3 - Aba EMail Message
+Figura 7.3 – Aba EMail Message
+4.1.4º Aba Attached Files
+Vamos anexar o log.txt no e-mail.
+
+Figura 7.4 - Aba Attached Files
+Figura 7.4 – Aba Attached Files
+5º E-mail de erro
+Incluindo outro step Mail, agora para sermos avisados quando algo der errado na transformação.
+
+Ao ligar o hop entre os steps SolicitacoesEmail e email ERRO o hop de erro (vermelho com x) já deve ser mostrado, caso isso não ocorra, clique no hop até aparecer essa ligação.
+
+A configuração é igual ao step de sucesso, com a deferença que agora você estará avisando que algo deu errado na transformação, então tenha atenção no assunto e na mensagem que será disparada.
+
+Figura 8 - E-mail de erro
+Figura 8 – E-mail de erro
+6º Automatizando o ETL
+É possível executar diretamente a transformação através do Pan sem a necessidade de se usar o Job, você precisa analisar o que atende sua necessidade. Eu gosto de imaginar que o ETL pode crescer e ter a necessidade de conectar a outras transformações, então gosto de sempre criar o Job. Artigo oficial sobre Pan e Kitchen pode ser acessado aqui.
+
+Com a nossa transformação e Job completos, agora precisamos deixar esse ETL pra ser executado de forma automática, pra isso criaremos o SolicitacoesEmail.bat que irá acionar outro recurso do Spoon chamado Kitchen para executar nosso Job (SolicitacoesEmail.kjb).
+
+
+@echo off
+ 
+TITLE ETL_Solicitacoes_Gmail
+SET currentdir=%~dp0
+SET kitchen=C:\pentaho\data-integration\Kitchen.bat
+SET logfile="%currentdir%log.txt"
+
+echo. >> %logfile%
+echo. >> %logfile%
+
+"%kitchen%" /file:"%currentdir%main.kjb" /level:Basic >> %logfile%
+						
+Figura 9 – Código do “SolicitacoesEmail.bat”
+Você pode clicar 2x nesse .bat pra testar se ele está executando o ETL. Antes de configurar o agendador.
+
+7º Agendar execução do ETL
+Estamos em ambiente Windows, então vamos usar o agendador nativo, mas recomendo usar o System Scheduler.
+
+Figura 10 - Agendador de tarefas do Windows
+Figura 10 – Agendador de tarefas do Windows
+7.1º Na pesquisa do Windows digite taskschd.msc
+Figura 11 - Pesquisa com taskschd.msc
+Figura 11 – Pesquisa com taskschd.msc
+7.2º Vá em Ação > Criar Tarefa…
+Figura 12 - Criar tarefa
+Figura 12 – Criar tarefa
+7.3º Na aba Disparadores > Novo…
+Aqui você determina os dias e horários que deseja executar o ETL.
+
+Figura 13 - Configurar dia e Hora
+Figura 13 – Configurar dia e Hora
+7.4º Mude para a aba Ações
+Em Programa/script coloque o caminho até SolicitacoesEmail.bat
+
+Figura 14 - Apontando .bat
+Figura 14 – Apontando .bat
+Debriefing
+Desenvolvemos o Job, criamos o arquivo batch e adicionamos os comandos necessários para executar nosso ETL, por último, configuramos o agendador do Windows pra executar o batch.
+
+Você vai sentir necessidade de um agendador, com mais opções dependendo do projeto que está trabalhando, por isso recomendei o agendador acima.
